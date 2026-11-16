@@ -313,7 +313,7 @@ export function createScene(canvas, opts = {}) {
   dice.castShadow = true;
   scene.add(dice);
 
-  const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -24, 0) });
+  const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -38, 0) });
   const mDice = new CANNON.Material('dice'), mFloor = new CANNON.Material('floor'), mWall = new CANNON.Material('wall');
   world.addContactMaterial(new CANNON.ContactMaterial(mDice, mFloor, { friction: 0.3, restitution: 0.38 }));
   world.addContactMaterial(new CANNON.ContactMaterial(mDice, mWall, { friction: 0.05, restitution: 0.55 }));
@@ -326,7 +326,7 @@ export function createScene(canvas, opts = {}) {
   ceiling.quaternion.setFromEuler(Math.PI / 2, 0, 0); ceiling.position.y = TRAY_Y + 5; world.addBody(ceiling);
 
   const diceBody = new CANNON.Body({ mass: 1, material: mDice, shape: new CANNON.Box(new CANNON.Vec3(DICE / 2, DICE / 2, DICE / 2)) });
-  diceBody.linearDamping = 0.05; diceBody.angularDamping = 0.06;
+  diceBody.linearDamping = 0.1; diceBody.angularDamping = 0.1;
   diceBody.position.set(0, TRAY_Y + DICE / 2, (TRAY.z0 + TRAY.z1) / 2);
   world.addBody(diceBody);
   let lastHit = 0;
@@ -363,17 +363,17 @@ export function createScene(canvas, opts = {}) {
       // 1) pick the dice up: it lifts out of the tray, spinning, to the throw point
       const from = dice.position.clone();
       const to = new THREE.Vector3(rand(-2.2, 2.2), TRAY_Y + 2.6, TRAY.z1 - 0.9);
-      const spin = new THREE.Vector3(rand(-14, 14), rand(-10, 10), rand(-14, 14));
+      const spin = new THREE.Vector3(rand(-22, 22), rand(-16, 16), rand(-22, 22));
       // 2) then throw it towards the board with a visible tumble
-      let vx = rand(-4, 4), vz = rand(-12, -8);
+      let vx = rand(-6, 6), vz = rand(-17, -12);
       if (swipe) {
-        vx = clamp(swipe.dx * 0.035, -9, 9) + rand(-1, 1);
-        vz = -clamp(Math.abs(swipe.dy) * 0.05, 8, 16);
+        vx = clamp(swipe.dx * 0.05, -12, 12) + rand(-1, 1);
+        vz = -clamp(Math.abs(swipe.dy) * 0.07, 12, 22);
       }
       roll = {
         resolve, still: 0, time: 0, nudges: 0,
-        lift: { t: 0, dur: 0.32, from, to, spin },
-        launch: { v: [vx, rand(1.5, 3.5), vz], w: [rand(-15, 15), rand(-10, 10), rand(-15, 15)].map((a) => a + Math.sign(a || 1) * 6) },
+        lift: { t: 0, dur: 0.18, from, to, spin },
+        launch: { v: [vx, rand(2, 4), vz], w: [rand(-24, 24), rand(-16, 16), rand(-24, 24)].map((a) => a + Math.sign(a || 1) * 8) },
       };
     });
   }
@@ -397,12 +397,37 @@ export function createScene(canvas, opts = {}) {
       }
       return;
     }
+    if (roll.snap) { // final settle: ease flat onto the face that is on top
+      const S2 = roll.snap;
+      S2.t += dt;
+      const k = Math.min(1, S2.t / 0.12);
+      dice.quaternion.slerpQuaternions(S2.q0, S2.q1, easeOut(k));
+      dice.position.y = S2.y0 + (TRAY_Y + DICE / 2 - S2.y0) * easeOut(k);
+      if (k >= 1) {
+        diceBody.position.set(dice.position.x, dice.position.y, dice.position.z);
+        diceBody.quaternion.set(dice.quaternion.x, dice.quaternion.y, dice.quaternion.z, dice.quaternion.w);
+        diceBody.velocity.set(0, 0, 0); diceBody.angularVelocity.set(0, 0, 0);
+        const r = roll; roll = null;
+        r.resolve(topValue().value);
+      }
+      return;
+    }
     world.step(1 / 120, dt, 10);
     syncDice();
     roll.time += dt;
+    // nearly stopped and lying low: snap flat instead of waiting out the wobble
+    if (roll.time > 0.6 && diceBody.velocity.length() < 1.2 && diceBody.angularVelocity.length() < 4 && diceBody.position.y < TRAY_Y + DICE / 2 + 0.25) {
+      const top = topValue();
+      if (top.dot > 0.75) {
+        const n = FACE_NORMALS[DICE_VALUES.indexOf(top.value)].clone().applyQuaternion(dice.quaternion);
+        const fix = new THREE.Quaternion().setFromUnitVectors(n, new THREE.Vector3(0, 1, 0));
+        roll.snap = { t: 0, q0: dice.quaternion.clone(), q1: fix.multiply(dice.quaternion.clone()), y0: dice.position.y };
+        return;
+      }
+    }
     const moving = diceBody.velocity.length() > 0.08 || diceBody.angularVelocity.length() > 0.12;
     roll.still = moving ? 0 : roll.still + 1;
-    if ((roll.still > 10 && roll.time > 0.8) || roll.time > 6) {
+    if ((roll.still > 8 && roll.time > 0.5) || roll.time > 4) {
       const top = topValue();
       if (top.dot < 0.92 && roll.nudges < 3) { // leaning on a wall: give it a nudge
         roll.nudges++;

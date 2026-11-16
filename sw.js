@@ -1,5 +1,5 @@
 // Offline support: serve cached files, refresh them in the background.
-const CACHE = 'ludo-mood-v3';
+const CACHE = 'ludo-mood-v4';
 const FILES = [
   './', 'index.html', 'style.css', 'manifest.json',
   'js/main.js', 'js/rules.js', 'js/audio.js', 'js/scene3d.js',
