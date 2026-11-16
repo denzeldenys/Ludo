@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Ludo Mood</title>
+  <meta name="description" content="An expressive Ludo game with tokens that feel every roll.">
+  <meta name="theme-color" content="#1b1640">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Ludo Mood">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ========== MENU ========== -->
+  <section id="menu" class="screen active">
+    <div class="menu-card">
+      <div class="logo">
+        <span class="logo-token red">•‿•</span>
+        <span class="logo-token green">^‿^</span>
+        <span class="logo-token yellow">°o°</span>
+        <span class="logo-token blue">ಠ‿ಠ</span>
+      </div>
+      <h1>Ludo <em>Mood</em></h1>
+      <p class="tag">Every token has feelings. Don't hurt them. (Do.)</p>
+
+      <h2>Players</h2>
+      <div id="seats" class="seats"></div>
+      <p class="hint">Tap a seat to switch it between You, Bot and Off. You need at least 2 players.</p>
+
+      <button id="btn-start" class="btn primary">Play!</button>
+      <button id="btn-continue" class="btn ghost hidden">Continue saved game</button>
+      <button id="btn-install" class="btn ghost hidden">📲 Install app</button>
+      <details class="rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>Roll a <b>6</b> to bring a token out of its base.</li>
+          <li>A 6 gives you another roll. Three 6s in a row and you lose the turn.</li>
+          <li>Land on an opponent to send them home crying, and roll again.</li>
+          <li>⭐ stars and start squares are safe. Nobody gets captured there.</li>
+          <li>You need the exact number to reach the centre. Get all 4 tokens home to win.</li>
+        </ul>
+      </details>
+    </div>
+  </section>
+
+  <!-- ========== GAME ========== -->
+  <section id="game" class="screen">
+    <header class="topbar">
+      <button id="btn-home" class="icon-btn" aria-label="Menu">☰</button>
+      <div id="turn-label" class="turn-label">Red's turn</div>
+      <button id="btn-sound" class="icon-btn" aria-label="Sound">🔊</button>
+    </header>
+
+    <div id="board-wrap" class="board-wrap">
+      <div id="board" class="board">
+        <svg id="board-svg" viewBox="0 0 15 15" aria-hidden="true"></svg>
+        <div id="avatars"></div>
+        <div id="tokens"></div>
+        <div id="floaters"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div id="message" class="message">Tap the dice to roll</div>
+      <div id="dice-zone" class="dice-zone">
+        <div id="dice" class="dice" role="button" aria-label="Roll dice" tabindex="0">
+          <div class="cube" id="cube">
+            <div class="face f1"><i class="p5"></i></div>
+            <div class="face f2"><i class="p1"></i><i class="p9"></i></div>
+            <div class="face f3"><i class="p1"></i><i class="p5"></i><i class="p9"></i></div>
+            <div class="face f4"><i class="p1"></i><i class="p3"></i><i class="p7"></i><i class="p9"></i></div>
+            <div class="face f5"><i class="p1"></i><i class="p3"></i><i class="p5"></i><i class="p7"></i><i class="p9"></i></div>
+            <div class="face f6"><i class="p1"></i><i class="p3"></i><i class="p4"></i><i class="p6"></i><i class="p7"></i><i class="p9"></i></div>
+          </div>
+        </div>
+      </div>
+      <div class="reactions" id="reactions">
+        <button data-r="😂">😂</button>
+        <button data-r="😡">😡</button>
+        <button data-r="😱">😱</button>
+        <button data-r="👏">👏</button>
+        <button data-r="😈">😈</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== WIN OVERLAY ========== -->
+  <div id="overlay" class="overlay hidden">
+    <div class="overlay-card">
+      <div id="win-emoji" class="win-emoji">👑</div>
+      <h2 id="win-title">Red wins!</h2>
+      <ol id="ranking"></ol>
+      <button id="btn-again" class="btn primary">Play again</button>
+      <button id="btn-menu" class="btn ghost">Menu</button>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+  <script src="game.js"></script>
+</body>
+</html>
