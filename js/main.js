@@ -57,7 +57,7 @@ const scene = createScene($('#scene'), {
   onDiceHit: (s, felt) => Sound.diceHit(s, felt),
   onFrame: positionAnchors,
 });
-scene.setMargins({ top: 70, bottom: 112 });
+scene.setMargins({ top: 70, bottom: 170 });
 $('#loading').classList.add('done');
 
 function positionAnchors() {
@@ -67,13 +67,14 @@ function positionAnchors() {
     if (!a) continue;
     const [ox, oy] = YARD[p.color];
     const top = oy === 0;
-    const s = scene.projectGrid(ox + 3, top ? -0.9 : 15.9, 0);
-    a.style.left = `${Math.max(70, Math.min(innerWidth - 70, s.x))}px`; a.style.top = `${s.y}px`;
-  }
-  const hint = $('#roll-hint');
-  if (!hint.classList.contains('hidden')) {
-    const d = scene.diceScreen();
-    hint.style.left = `${d.x}px`; hint.style.top = `${d.y - 10}px`;
+    if (top) {
+      const s = scene.projectGrid(ox + 3, -0.9, 0);
+      a.style.left = `${Math.max(80, Math.min(innerWidth - 80, s.x))}px`; a.style.top = `${s.y}px`;
+    } else {
+      // below the dice tray, one on each side, so nothing covers the dice
+      const s = scene.trayScreen(0);
+      a.style.left = `${ox === 0 ? innerWidth * 0.26 : innerWidth * 0.74}px`; a.style.top = `${s.y}px`;
+    }
   }
 }
 
@@ -234,7 +235,7 @@ async function gameLoop(id) {
     // --- roll ---
     let swipe = null;
     if (p.type === 'human') {
-      setMessage(humans() > 1 ? `${p.name}, roll the dice!` : 'Your roll!');
+      setMessage(humans() > 1 ? `${p.name}, your roll!` : '');
       $('#roll-hint').classList.remove('hidden');
       swipe = await new Promise((r) => { rollWaiter = r; });
       $('#roll-hint').classList.add('hidden');
@@ -248,7 +249,7 @@ async function gameLoop(id) {
     buzz(20);
     const v = await scene.rollDice(swipe, testRolls.shift());
     if (id !== gameId) return;
-    floatAt(scene.diceScreen(), String(v), 'dice-num');
+    setMessage(`${p.type === 'human' && p.name === 'You' ? 'You' : p.name} rolled ${v}${v === 6 ? '!' : ''}`);
     Sound.diceResult(v);
 
     if (v === 6) {

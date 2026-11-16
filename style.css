@@ -114,6 +114,7 @@ h1 em { color: var(--accent); font-style: normal; }
   padding: 6px 10px calc(env(safe-area-inset-bottom) + 10px);
   display: flex; flex-direction: column; align-items: center; gap: 8px;
 }
+.message:empty { display: none; }
 .message { min-height: 22px; font-weight: 800; text-align: center; font-size: 16px; text-shadow: 0 2px 8px rgba(0,0,0,.9); }
 .reactions { display: flex; gap: 8px; }
 .reactions button {
@@ -124,13 +125,12 @@ h1 em { color: var(--accent); font-style: normal; }
 .reactions button:active { transform: scale(1.3); }
 
 .roll-hint {
-  position: absolute; transform: translate(-50%, -100%);
   background: rgba(255,255,255,.95); color: var(--ink);
   font-weight: 800; font-size: 14px; padding: 8px 14px; border-radius: 99px;
   white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.4);
   animation: hint 1s ease-in-out infinite;
 }
-@keyframes hint { 0%,100% { margin-top: 0 } 50% { margin-top: -8px } }
+@keyframes hint { 0%,100% { transform: scale(1) } 50% { transform: scale(1.06) } }
 
 /* anchored to 3D positions */
 #anchors { position: absolute; inset: 0; }

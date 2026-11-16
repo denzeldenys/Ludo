@@ -10,8 +10,8 @@ const YARD_TOP = 0.39;
 const PYR_H = 0.95;
 const TABLE_Y = -0.7;
 const TRAY_Y = -0.6;                 // top of the felt the dice lands on
-const TRAY = { x: 3.6, z0: 8.75, z1: 11.75 };
-const DICE = 1.15;
+const TRAY = { x: 4.4, z0: 8.8, z1: 13.4 };
+const DICE = 1.5;
 const DICE_VALUES = [2, 5, 1, 6, 3, 4]; // value on the +x, -x, +y, -y, +z, -z faces
 const FACE_NORMALS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].map((a) => new THREE.Vector3(...a));
 
@@ -309,24 +309,24 @@ export function createScene(canvas, opts = {}) {
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
     return new THREE.MeshPhysicalMaterial({ map: t, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.1 });
   });
-  const dice = new THREE.Mesh(new RoundedBoxGeometry(DICE, DICE, DICE, 5, 0.17), diceMats);
+  const dice = new THREE.Mesh(new RoundedBoxGeometry(DICE, DICE, DICE, 5, 0.22), diceMats);
   dice.castShadow = true;
   scene.add(dice);
 
-  const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -36, 0) });
+  const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -24, 0) });
   const mDice = new CANNON.Material('dice'), mFloor = new CANNON.Material('floor'), mWall = new CANNON.Material('wall');
-  world.addContactMaterial(new CANNON.ContactMaterial(mDice, mFloor, { friction: 0.32, restitution: 0.32 }));
+  world.addContactMaterial(new CANNON.ContactMaterial(mDice, mFloor, { friction: 0.3, restitution: 0.38 }));
   world.addContactMaterial(new CANNON.ContactMaterial(mDice, mWall, { friction: 0.05, restitution: 0.55 }));
   const floor = new CANNON.Body({ mass: 0, material: mFloor, shape: new CANNON.Plane() });
   floor.quaternion.setFromEuler(-Math.PI / 2, 0, 0); floor.position.y = TRAY_Y;
   world.addBody(floor);
   const wall = (x, z, hx, hz) => { const w = new CANNON.Body({ mass: 0, material: mWall, shape: new CANNON.Box(new CANNON.Vec3(hx, 6, hz)) }); w.position.set(x, TRAY_Y + 6, z); world.addBody(w); };
-  wall(0, TRAY.z0 - 0.5, 8, 0.5); wall(0, TRAY.z1 + 0.5, 8, 0.5); wall(-TRAY.x - 0.5, 10, 0.5, 6); wall(TRAY.x + 0.5, 10, 0.5, 6);
+  wall(0, TRAY.z0 - 0.5, 8, 0.5); wall(0, TRAY.z1 + 0.5, 8, 0.5); wall(-TRAY.x - 0.5, 11, 0.5, 7); wall(TRAY.x + 0.5, 11, 0.5, 7);
   const ceiling = new CANNON.Body({ mass: 0, material: mWall, shape: new CANNON.Plane() });
   ceiling.quaternion.setFromEuler(Math.PI / 2, 0, 0); ceiling.position.y = TRAY_Y + 5; world.addBody(ceiling);
 
   const diceBody = new CANNON.Body({ mass: 1, material: mDice, shape: new CANNON.Box(new CANNON.Vec3(DICE / 2, DICE / 2, DICE / 2)) });
-  diceBody.linearDamping = 0.08; diceBody.angularDamping = 0.12;
+  diceBody.linearDamping = 0.05; diceBody.angularDamping = 0.06;
   diceBody.position.set(0, TRAY_Y + DICE / 2, (TRAY.z0 + TRAY.z1) / 2);
   world.addBody(diceBody);
   let lastHit = 0;
@@ -360,29 +360,49 @@ export function createScene(canvas, opts = {}) {
       return Promise.resolve(v);
     }
     return new Promise((resolve) => {
-      const zMid = (TRAY.z0 + TRAY.z1) / 2;
-      diceBody.position.set(rand(-2.5, 2.5), TRAY_Y + 2.2, TRAY.z1 - 0.4);
-      const q = new CANNON.Quaternion(); q.setFromEuler(rand(0, 6.3), rand(0, 6.3), rand(0, 6.3)); diceBody.quaternion.copy(q);
-      let vx = rand(-6, 6), vz = rand(-16, -10);
+      // 1) pick the dice up: it lifts out of the tray, spinning, to the throw point
+      const from = dice.position.clone();
+      const to = new THREE.Vector3(rand(-2.2, 2.2), TRAY_Y + 2.6, TRAY.z1 - 0.9);
+      const spin = new THREE.Vector3(rand(-14, 14), rand(-10, 10), rand(-14, 14));
+      // 2) then throw it towards the board with a visible tumble
+      let vx = rand(-4, 4), vz = rand(-12, -8);
       if (swipe) {
-        vx = clamp(swipe.dx * 0.04, -12, 12) + rand(-1, 1);
-        vz = -clamp(Math.abs(swipe.dy) * 0.06, 9, 22);
+        vx = clamp(swipe.dx * 0.035, -9, 9) + rand(-1, 1);
+        vz = -clamp(Math.abs(swipe.dy) * 0.05, 8, 16);
       }
-      diceBody.velocity.set(vx, rand(3, 7), vz);
-      diceBody.angularVelocity.set(rand(-28, 28), rand(-20, 20), rand(-28, 28));
-      diceBody.wakeUp();
-      roll = { resolve, still: 0, time: 0, nudges: 0, zMid };
+      roll = {
+        resolve, still: 0, time: 0, nudges: 0,
+        lift: { t: 0, dur: 0.32, from, to, spin },
+        launch: { v: [vx, rand(1.5, 3.5), vz], w: [rand(-15, 15), rand(-10, 10), rand(-15, 15)].map((a) => a + Math.sign(a || 1) * 6) },
+      };
     });
   }
 
   function updateDice(dt) {
     if (!roll) return;
+    if (roll.lift) {
+      const L = roll.lift;
+      L.t += dt;
+      const k = Math.min(1, L.t / L.dur);
+      dice.position.lerpVectors(L.from, L.to, easeOut(k));
+      dice.position.y += Math.sin(Math.PI * k) * 0.6;
+      dice.rotation.x += L.spin.x * dt; dice.rotation.y += L.spin.y * dt; dice.rotation.z += L.spin.z * dt;
+      if (k >= 1) {
+        roll.lift = null;
+        diceBody.position.set(dice.position.x, dice.position.y, dice.position.z);
+        diceBody.quaternion.set(dice.quaternion.x, dice.quaternion.y, dice.quaternion.z, dice.quaternion.w);
+        diceBody.velocity.set(...roll.launch.v);
+        diceBody.angularVelocity.set(...roll.launch.w);
+        diceBody.wakeUp();
+      }
+      return;
+    }
     world.step(1 / 120, dt, 10);
     syncDice();
     roll.time += dt;
     const moving = diceBody.velocity.length() > 0.08 || diceBody.angularVelocity.length() > 0.12;
     roll.still = moving ? 0 : roll.still + 1;
-    if (roll.still > 10 || roll.time > 5) {
+    if ((roll.still > 10 && roll.time > 0.8) || roll.time > 6) {
       const top = topValue();
       if (top.dot < 0.92 && roll.nudges < 3) { // leaning on a wall: give it a nudge
         roll.nudges++;
@@ -581,6 +601,7 @@ export function createScene(canvas, opts = {}) {
   })();
   const projectGrid = (gx, gy, up = 0) => project(gx - 7.5, surfaceY(gx, gy) + up, gy - 7.5);
   const diceScreen = () => project(dice.position.x, dice.position.y + 0.8, dice.position.z);
+  const trayScreen = (x, front = true) => project(x, TRAY_Y + 0.2, front ? TRAY.z1 + 0.7 : TRAY.z0);
   const tokenScreen = (key) => { const p = tokens[key].group.position; return project(p.x, p.y + 0.5, p.z); };
 
   function pick(clientX, clientY, keys) {
@@ -697,7 +718,7 @@ export function createScene(canvas, opts = {}) {
 
   return {
     setPlayers, setMood, setTargets, setSelectable, hopTo, flyTo, burst, rollDice,
-    pick, projectGrid, diceScreen, tokenScreen, setActive, shake, slowmo, setMenuMode, fit,
+    pick, projectGrid, diceScreen, trayScreen, tokenScreen, setActive, shake, slowmo, setMenuMode, fit,
     setMargins: (m) => { margins = m; fit(); },
     isRolling: () => !!roll,
   };
