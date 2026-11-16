@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
   <title>Ludo Mood</title>
-  <meta name="description" content="An expressive Ludo game with tokens that feel every roll.">
-  <meta name="theme-color" content="#1b1640">
+  <meta name="description" content="A 3D Ludo game with tokens that feel every roll.">
+  <meta name="theme-color" content="#110c2c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,71 +14,26 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
 </head>
 <body>
-  <!-- ========== MENU ========== -->
-  <section id="menu" class="screen active">
-    <div class="menu-card">
-      <div class="logo">
-        <span class="logo-token red">•‿•</span>
-        <span class="logo-token green">^‿^</span>
-        <span class="logo-token yellow">°o°</span>
-        <span class="logo-token blue">ಠ‿ಠ</span>
-      </div>
-      <h1>Ludo <em>Mood</em></h1>
-      <p class="tag">Every token has feelings. Don't hurt them. (Do.)</p>
+  <canvas id="scene"></canvas>
 
-      <h2>Players</h2>
-      <div id="seats" class="seats"></div>
-      <p class="hint">Tap a seat to switch it between You, Bot and Off. You need at least 2 players.</p>
-
-      <button id="btn-start" class="btn primary">Play!</button>
-      <button id="btn-continue" class="btn ghost hidden">Continue saved game</button>
-      <button id="btn-install" class="btn ghost hidden">📲 Install app</button>
-      <details class="rules">
-        <summary>How to play</summary>
-        <ul>
-          <li>Roll a <b>6</b> to bring a token out of its base.</li>
-          <li>A 6 gives you another roll. Three 6s in a row and you lose the turn.</li>
-          <li>Land on an opponent to send them home crying, and roll again.</li>
-          <li>⭐ stars and start squares are safe. Nobody gets captured there.</li>
-          <li>You need the exact number to reach the centre. Get all 4 tokens home to win.</li>
-        </ul>
-      </details>
-    </div>
-  </section>
-
-  <!-- ========== GAME ========== -->
-  <section id="game" class="screen">
+  <!-- in-game HUD -->
+  <div id="hud" class="hud hidden">
+    <div id="anchors"></div>
+    <div id="flash" class="flash"></div>
     <header class="topbar">
       <button id="btn-home" class="icon-btn" aria-label="Menu">☰</button>
-      <div id="turn-label" class="turn-label">Red's turn</div>
-      <button id="btn-sound" class="icon-btn" aria-label="Sound">🔊</button>
+      <div id="turn-label" class="turn-label">Ready</div>
+      <div class="top-right">
+        <button id="btn-music" class="icon-btn" aria-label="Music">🎵</button>
+        <button id="btn-sound" class="icon-btn" aria-label="Sound effects">🔊</button>
+      </div>
     </header>
-
-    <div id="board-wrap" class="board-wrap">
-      <div id="board" class="board">
-        <svg id="board-svg" viewBox="0 0 15 15" aria-hidden="true"></svg>
-        <div id="avatars"></div>
-        <div id="tokens"></div>
-        <div id="floaters"></div>
-      </div>
-    </div>
-
-    <div class="controls">
-      <div id="message" class="message">Tap the dice to roll</div>
-      <div id="dice-zone" class="dice-zone">
-        <div id="dice" class="dice" role="button" aria-label="Roll dice" tabindex="0">
-          <div class="cube" id="cube">
-            <div class="face f1"><i class="p5"></i></div>
-            <div class="face f2"><i class="p1"></i><i class="p9"></i></div>
-            <div class="face f3"><i class="p1"></i><i class="p5"></i><i class="p9"></i></div>
-            <div class="face f4"><i class="p1"></i><i class="p3"></i><i class="p7"></i><i class="p9"></i></div>
-            <div class="face f5"><i class="p1"></i><i class="p3"></i><i class="p5"></i><i class="p7"></i><i class="p9"></i></div>
-            <div class="face f6"><i class="p1"></i><i class="p3"></i><i class="p4"></i><i class="p6"></i><i class="p7"></i><i class="p9"></i></div>
-          </div>
-        </div>
-      </div>
+    <div id="roll-hint" class="roll-hint hidden">👆 Tap or flick to roll</div>
+    <div class="bottombar">
+      <div id="message" class="message"></div>
       <div class="reactions" id="reactions">
         <button data-r="😂">😂</button>
         <button data-r="😡">😡</button>
@@ -87,9 +42,34 @@
         <button data-r="😈">😈</button>
       </div>
     </div>
+  </div>
+
+  <!-- menu -->
+  <section id="menu" class="menu">
+    <div class="menu-card">
+      <h1>Ludo <em>Mood</em></h1>
+      <p class="tag">Every token has feelings. Don't hurt them. (Do.)</p>
+      <h2>Players</h2>
+      <div id="seats" class="seats"></div>
+      <p class="hint">Tap a seat to switch between You, Bot and Off.</p>
+      <button id="btn-start" class="btn primary">Play!</button>
+      <button id="btn-continue" class="btn ghost hidden">Continue saved game</button>
+      <button id="btn-install" class="btn ghost hidden">📲 Install app</button>
+      <details class="rules">
+        <summary>How to play</summary>
+        <ul>
+          <li>Tap the screen or flick upwards to throw the dice.</li>
+          <li>Roll a <b>6</b> to bring a token out of its base.</li>
+          <li>A 6 gives you another roll. Three 6s in a row and you lose the turn.</li>
+          <li>Land on an opponent to knock them back to base, and roll again.</li>
+          <li>⭐ stars and start squares are safe.</li>
+          <li>You need the exact number to reach the centre. Get all 4 home to win.</li>
+        </ul>
+      </details>
+    </div>
   </section>
 
-  <!-- ========== WIN OVERLAY ========== -->
+  <!-- game over -->
   <div id="overlay" class="overlay hidden">
     <div class="overlay-card">
       <div id="win-emoji" class="win-emoji">👑</div>
@@ -100,7 +80,8 @@
     </div>
   </div>
 
+  <div id="loading" class="loading">Loading 3D…</div>
   <canvas id="confetti"></canvas>
-  <script src="game.js"></script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

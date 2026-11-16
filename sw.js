@@ -1,6 +1,11 @@
 // Offline support: serve cached files, refresh them in the background.
-const CACHE = 'ludo-mood-v1';
-const FILES = ['./', 'index.html', 'style.css', 'game.js', 'manifest.json', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
+const CACHE = 'ludo-mood-v2';
+const FILES = [
+  './', 'index.html', 'style.css', 'manifest.json',
+  'js/main.js', 'js/rules.js', 'js/audio.js', 'js/scene3d.js',
+  'vendor/three.module.min.js', 'vendor/cannon-es.js', 'vendor/RoundedBoxGeometry.js', 'vendor/RoomEnvironment.js',
+  'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
+];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
